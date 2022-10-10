@@ -12,18 +12,7 @@
 
 using namespace std;
 
-ByteStream::ByteStream(const size_t capacity) { 
-    _capacity_size=capacity;
-    _written_size=0;
-    _read_size=0;
-    if(capacity==0){
-        _end_input=true;
-    }
-    else{
-        _end_input=false;
-    }
-    _error=false;
-}
+ByteStream::ByteStream(const size_t capacity) :_capacity_size(capacity),_written_size(0),_read_size(0),_end_input(false),_error(false) {}
 
 size_t ByteStream::write(const string &data) {
     size_t i=0;
@@ -43,8 +32,9 @@ string ByteStream::peek_output(const size_t len) const {
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) {
     size_t num=min(len,stream.size());
-    for(int i=0;i<num;i++){
+    for(size_t i=0;i<num;i++){
         stream.pop_front();
+        _read_size++;
     }
 }
 
@@ -52,7 +42,6 @@ void ByteStream::pop_output(const size_t len) {
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
 std::string ByteStream::read(const size_t len) {
-    _read_size+=min(len,stream.size());
     string s=peek_output(len);
     pop_output(len);
     return s;
