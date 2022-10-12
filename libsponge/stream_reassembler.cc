@@ -7,19 +7,19 @@
 
 // You will need to add private members to the class declaration in `stream_reassembler.hh`
 
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+// template <typename... Targs>
+// void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity) : 
+_buffer(capacity,byte{'\0',0,false}),
+_first_unassembled(0),
+// _first_unacceptable(capacity),
+_unassembled_bytes(0),
+_end(false),
 _output(capacity), 
-_capacity(capacity),
-_buffer(),
-_index(),
-_expect_index(0),
-_size(0),
-_end(false) 
+_capacity(capacity)
 {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
@@ -27,49 +27,48 @@ _end(false)
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
     // DUMMY_CODE(data, index, eof);
-    if(index<_expect_index) return;
-    size_t len=min(_capacity-_size-_output.buffer_size(),data.length());
-    const string s=data.substr(0,len);
-    size_t i=0;
-    for(;i<_index.size()&&_index[i]<index;i++);
-    if(i==_index.size()){
-        _buffer.push_back(s);
-        _index.push_back(index);
-        _size+=len;
+    if(eof&&index+data.length()<=_output.bytes_read()+_capacity){
+        _end=true;
     }
-    else{
-        if(index==_index[i]){
-            return;
+    if(data==""){
+        if(empty()){
+            _output.end_input();
         }
-        else{
-            _buffer.insert(_buffer.begin()+(long)i,s);
-            _index.insert(_index.begin()+(long)i,index);
-            _size+=len;
-        }
+        return;
     }
-    if(eof){
-        _end=eof;
+    if(index>=_output.bytes_read()+_capacity||index+data.length()<_first_unassembled){
+        return;
     }
-    // std::cout<<"The error is this:!!!!"<<std::endl;
-    // std::cout<<_buffer.front()<<" "<<_index.front()<<" "<<_expect_index<<" "<<_size<<std::endl;
-    while(!_buffer.empty()&& _expect_index==_index.front()){
-        _output.write(_buffer.front());
-        _expect_index+=_buffer.front().length();
-        _size-=_buffer.front().length();
-        _buffer.pop_front();
-        _index.pop_front();
 
+    size_t data_begin_index=max(index,_first_unassembled);
+    size_t data_end_index=min(index+data.length()-1,_output.bytes_read()+_capacity-1);
+    string s=data.substr(data_begin_index-index,data_end_index-data_begin_index+1);
+    for(size_t i=0;i<s.length();i++){
+        if(_buffer[data_begin_index-_first_unassembled+i].val=='\0'){
+            _buffer[data_begin_index-_first_unassembled+i]=byte{s[i],i+data_begin_index,true};
+            _unassembled_bytes++;
+        }
+    }
+    if(_first_unassembled==_buffer.front().index&&_buffer.front().is_write==true){
+        string r="";
+        while(_first_unassembled==_buffer.front().index&&_buffer.front().is_write==true){
+            r+=_buffer.front().val;
+            _first_unassembled++;
+            _buffer.pop_front();
+            _buffer.push_back(byte{'\0',0,false});
+            _unassembled_bytes--;
+        }
+        _output.write(r);
+    }
+    if(empty()){
+        _output.end_input();
     }
 }
 
 size_t StreamReassembler::unassembled_bytes() const {
-    size_t t=0;
-    for(size_t i=0;i<_buffer.size();i++){
-        t+=_buffer[i].length();
-    }
-    return t;
+    return _unassembled_bytes;
 }
 
 bool StreamReassembler::empty() const {
-    return _end&&_buffer.empty();
+    return _end&&(_unassembled_bytes==0);
 }
