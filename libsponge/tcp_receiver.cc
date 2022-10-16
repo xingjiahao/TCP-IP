@@ -18,6 +18,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     else{
         if(_is_setISN==false) return;
     }
+    if(!_is_setISN) return;
     uint64_t index=unwrap(seg.header().seqno,_ISN,_reassembler.stream_out().bytes_written());
     string s=seg.payload().copy();
     if(seg.header().syn){
