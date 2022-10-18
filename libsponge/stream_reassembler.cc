@@ -13,20 +13,18 @@
 using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity) : 
-_buffer(capacity,byte{'\0',0,false}),
-_first_unassembled(0),
-// _first_unacceptable(capacity),
-_unassembled_bytes(0),
-_end(false),
-_output(capacity), 
-_capacity(capacity)
-{}
+    _buffer(capacity,byte{'\0',0,false}),
+    _first_unassembled(0),
+    _unassembled_bytes(0),
+    _end(false),
+    _output(capacity), 
+    _capacity(capacity)
+    {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-    // DUMMY_CODE(data, index, eof);
     if(eof&&index+data.length()<=_output.bytes_read()+_capacity){
         _end=true;
     }
@@ -44,7 +42,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     size_t data_end_index=min(index+data.length()-1,_output.bytes_read()+_capacity-1);
     string s=data.substr(data_begin_index-index,data_end_index-data_begin_index+1);
     for(size_t i=0;i<s.length();i++){
-        if(_buffer[data_begin_index-_first_unassembled+i].val=='\0'){
+        if(_buffer[data_begin_index-_first_unassembled+i].is_write==false){
             _buffer[data_begin_index-_first_unassembled+i]=byte{s[i],i+data_begin_index,true};
             _unassembled_bytes++;
         }
